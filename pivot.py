@@ -7,7 +7,7 @@ from random import randint
 
 
 def saw(steps, iterations, interactive=True):
-    """Generates and plots a self-avoiding walk using the pivot algorithm
+    """Generate and plot a self-avoiding walk using the pivot algorithm
 
     Args:
         steps (int): The number of steps in the walk.
@@ -36,7 +36,9 @@ def saw(steps, iterations, interactive=True):
         elif n % 100 == 0:
             print("Iteration %d\n" % n)
 
-        walk = pivot(walk)
+        pivWalk, pivStep = pivot(walk)
+        if not checkIntersect(pivWalk, pivStep):
+            walk = pivWalk
 
         x = [item[0] for item in walk]
         y = [item[1] for item in walk]
@@ -58,7 +60,7 @@ def saw(steps, iterations, interactive=True):
 
 
 def pivot(walk):
-    """Performs a random pivot of a walk"""
+    """Perform a single random pivot of a walk"""
 
     steps = len(walk)
     pivStep = randint(0, steps - 1)
@@ -74,14 +76,12 @@ def pivot(walk):
         pivWalk[i] = (pivPoint +
                       np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
 
-    intersects = checkIntersect(pivWalk, pivStep)
-    if not intersects:
-        return pivWalk
-    else:
-        return walk
+    return pivWalk, pivStep
 
 
 def checkIntersect(walk, pivStep):
+    """Check for self-intersections in a walk"""
+
     steps = len(walk)
 
     for i in range(0, pivStep):
