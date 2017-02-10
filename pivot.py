@@ -16,7 +16,6 @@ def saw(steps, iterations, interactive=True):
 
     Returns:
         list: The generated self-avoiding walk
-
     """
 
     start = default_timer()
@@ -53,7 +52,14 @@ def saw(steps, iterations, interactive=True):
 
 
 def pivot(walk):
-    """Attempt to perform a single random pivot of a self-avoiding walk"""
+    """Attempt to perform a single random pivot of a self-avoiding walk
+
+    Args:
+        walk (list): the walk to pivot
+
+    Returns:
+        list: the pivotted walk
+    """
 
     steps = len(walk)
     pivStep = randint(0, steps - 1)
