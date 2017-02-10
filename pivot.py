@@ -1,8 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from timeit import default_timer
-
-from math import cos, sin, pi
 from random import randint
 
 
@@ -36,9 +34,7 @@ def saw(steps, iterations, interactive=True):
         elif n % 100 == 0:
             print("Iteration %d\n" % n)
 
-        pivWalk, pivStep = pivot(walk)
-        if not checkIntersect(pivWalk, pivStep):
-            walk = pivWalk
+        walk = pivot(walk)
 
         x = [item[0] for item in walk]
         y = [item[1] for item in walk]
@@ -54,39 +50,38 @@ def saw(steps, iterations, interactive=True):
 
     stop = default_timer()
     if not interactive:
-        print('Run iterations: ', stop - start, 's')
+        print('Run time: ', stop - start, 's')
 
     return walk
 
 
 def pivot(walk):
-    """Perform a single random pivot of a walk"""
+    """Attempt to perform a single random pivot of a self-avoiding walk"""
 
     steps = len(walk)
     pivStep = randint(0, steps - 1)
     pivPoint = walk[pivStep]
 
-    angle = randint(0, 3) * pi / 2
-    cosAng = round(cos(angle))
-    sinAng = round(sin(angle))
-    rot = np.array([[cosAng, sinAng], [-sinAng, cosAng]])
+    rot = randRot2()
 
     pivWalk = walk[:]
-    for i in range(pivStep, steps):
+    for i in range(pivStep + 1, steps):
         pivWalk[i] = (pivPoint +
                       np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
+        for j in range(pivStep):
+            if (pivWalk[i] == pivWalk[j]).all():
+                return walk
 
-    return pivWalk, pivStep
+    return pivWalk
 
 
-def checkIntersect(walk, pivStep):
-    """Check for self-intersections in a walk"""
+def randRot2():
+    """Return a random 2 by 2 rotation matrix that is not the identity"""
+    rot = np.empty([2, 2])
 
-    steps = len(walk)
+    rot[0, 1] = randint(-1, 1)
+    rot[0, 0] = abs(rot[0, 1]) - 1
+    rot[1, 0] = -rot[0, 1]
+    rot[1, 1] = rot[0, 0]
 
-    for i in range(0, pivStep):
-        for j in range(pivStep + 1, steps):
-            if (walk[i] == walk[j]).all():
-                return True
-
-    return False
+    return rot
