@@ -21,6 +21,7 @@ def saw(steps, iterations, interactive=True):
 
     start = default_timer()
 
+    # Initiate walk to straight line
     walk = [np.array([i, 0]) for i in range(0, steps)]
 
     if interactive:
@@ -34,19 +35,15 @@ def saw(steps, iterations, interactive=True):
         elif n % 100 == 0:
             print("Iteration %d\n" % n)
 
+        # Pivot and (if interactive or on final iteration) plot the walk
         walk = pivot(walk)
-
-        x = [item[0] for item in walk]
-        y = [item[1] for item in walk]
-        if interactive:
+        if interactive or n == iterations - 1:
+            x = [item[0] for item in walk]
+            y = [item[1] for item in walk]
             plt.clf()
             plt.plot(x, y, '-o')
             plt.axes().set_aspect('equal', 'datalim')
             plt.pause(0.5)
-
-    plt.plot(x, y, '-o')
-    plt.axes().set_aspect('equal', 'datalim')
-    plt.pause(0.1)
 
     stop = default_timer()
     if not interactive:
@@ -64,10 +61,13 @@ def pivot(walk):
 
     rot = randRot2()
 
+    # Copy walk into pivWalk and attempt to pivot steps past pivStep
     pivWalk = walk[:]
     for i in range(pivStep + 1, steps):
         pivWalk[i] = (pivPoint +
                       np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
+        # Check for intersection resulting from pivot. Intersections can
+        # only occur between steps before and after pivStep.
         for j in range(pivStep):
             if (pivWalk[i] == pivWalk[j]).all():
                 return walk
@@ -77,6 +77,7 @@ def pivot(walk):
 
 def randRot2():
     """Return a random 2 by 2 rotation matrix that is not the identity"""
+
     rot = np.empty([2, 2])
 
     rot[0, 1] = randint(-1, 1)
