@@ -45,9 +45,12 @@ class saw(Sequence):
         for i in range(pivStep + 1, self.steps):
             pivWalk[i] = (pivPoint +
                           np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
-            # Check for intersection resulting from pivot. Intersections can
-            # only occur between steps before and after pivStep.
+            # Checking for intersections can be optimized using hash tables
             for j in range(pivStep):
+                # Might be a bit faster (especially if d is large) to check one
+                # component at a time.
+                # See also the speedup for nearest-neighbour walks in Stellman,
+                # Froimowitz, and Gans (71)
                 if (pivWalk[i] == pivWalk[j]).all():
                     return False
 
@@ -63,18 +66,18 @@ class saw(Sequence):
             pivStep = randint(0, self.steps - 1)
             self.pivotOnce(pivStep, rot)
 
-    def dist(self, start=0, end=-1):
+    def dist(self, start=0, end=-1, ord=2):
         """Return the end-to-end distance of the walk"""
 
-        return np.linalg.norm(self.w[end] - self.w[start])
+        return np.linalg.norm(self.w[end] - self.w[start], ord)
 
-    def maxDist(self):
+    def maxDist(self, ord=2):
         """Return the max distance between any two points of the walk"""
 
         m = 0
         for i in range(self.steps):
             for j in range(i + 1, self.steps):
-                m = max(self.dist(i, j), m)
+                m = max(self.dist(i, j, ord), m)
         return m
 
 
@@ -98,8 +101,12 @@ def plotwalk(walk, style='-o'):
     y = [item[1] for item in walk]
     plt.clf()
     plt.plot(x, y, style)
-    plt.axes().set_aspect('equal', 'datalim')
+    # plt.axes().set_aspect('equal', 'datalim')
+    # size = max(max(plt.axis()), walk.maxDist())
+    size = walk.maxDist(np.inf)
+    plt.axis([-size, size, -size, size])
     plt.pause(0.2)
+    input('')
 
 
 def demo(steps, iterations):
