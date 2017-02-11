@@ -28,7 +28,7 @@ class saw(Sequence):
         for point in self.w:
             print(point)
 
-    def pivotOnce(self, pivStep, rot):
+    def pivot(self, pivStep, rot):
         """Attempt to pivot the walk in a self-avoiding manner
 
         Args:
@@ -57,14 +57,14 @@ class saw(Sequence):
         self.w = pivWalk
         return True
 
-    def pivot(self, iterations):
+    def mix(self, iterations):
         for n in range(0, iterations):
             if n > 0 and n % 100 == 0:
                 print("Iteration %d\n" % n)
 
             rot = randRot2()
             pivStep = randint(0, self.steps - 1)
-            self.pivotOnce(pivStep, rot)
+            self.pivot(pivStep, rot)
 
     def dist(self, start=0, end=-1, ord=2):
         """Return the end-to-end distance of the walk"""
@@ -118,6 +118,6 @@ def demo(steps, iterations):
 
     for n in range(iterations):
         print('Iteration ', n)
-        walk.pivot(1)
+        walk.mix(1)
         plotwalk(walk)
     return None
