@@ -1,84 +1,81 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from timeit import default_timer
+from collections.abc import Sequence
+# from timeit import default_timer
 from random import randint
+from copy import deepcopy
 
 
-def saw(steps, iterations, interactive=True):
-    """Generate and plot a self-avoiding walk using the pivot algorithm
+class saw(Sequence):
+    """Self-avoiding walk class"""
 
-    Args:
-        steps (int): The number of steps in the walk.
-        iterations (int): The number of times to pivot the walk.
-        interactive (bool, optional): Set to True to update the
-            plot after each iteration, and set to False otherwise.
-            Defaults to True.
+    def __init__(self, init):
+        if type(init) == int:
+            self.steps = init
+            self.w = np.array([[i, 0] for i in range(self.steps)])
+        elif type(init) == list:
+            self.steps = len(init)
+            self.w = init
+        super().__init__()
 
-    Returns:
-        list: The generated self-avoiding walk
-    """
+    def __getitem__(self, i):
+        return self.w[i]
 
-    start = default_timer()
+    def __len__(self):
+        return self.steps
 
-    # Initiate walk to straight line
-    walk = [np.array([i, 0]) for i in range(0, steps)]
+    def display(self):
+        for point in self.w:
+            print(point)
 
-    if interactive:
-        plt.ion()
-    plt.clf()
-    plt.show()
+    def pivotOnce(self, pivStep, rot):
+        """Attempt to pivot the walk in a self-avoiding manner
 
-    for n in range(0, iterations):
-        if interactive:
-            print("Iteration %d\n" % n)
-        elif n % 100 == 0:
-            print("Iteration %d\n" % n)
+        Args:
+            pivStep (int): the step about which to pivot
+            rot (numpy.array): a rotation matrix
 
-        # Pivot and (if interactive or on final iteration) plot the walk
-        walk = pivot(walk)
-        if interactive or n == iterations - 1:
-            x = [item[0] for item in walk]
-            y = [item[1] for item in walk]
-            plt.clf()
-            plt.plot(x, y, '-o')
-            plt.axes().set_aspect('equal', 'datalim')
-            plt.pause(0.5)
+        Returns:
+            bool: True if pivot succeeds, False otherwise
+        """
 
-    stop = default_timer()
-    if not interactive:
-        print('Run time: ', stop - start, 's')
+        # Copy walk into pivWalk and attempt to pivot steps past pivStep
+        pivWalk = deepcopy(self.w)
+        pivPoint = pivWalk[pivStep]
+        for i in range(pivStep + 1, self.steps):
+            pivWalk[i] = (pivPoint +
+                          np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
+            # Check for intersection resulting from pivot. Intersections can
+            # only occur between steps before and after pivStep.
+            for j in range(pivStep):
+                if (pivWalk[i] == pivWalk[j]).all():
+                    return False
 
-    return walk
+        self.w = pivWalk
+        return True
 
+    def pivot(self, iterations):
+        for n in range(0, iterations):
+            if n > 0 and n % 100 == 0:
+                print("Iteration %d\n" % n)
 
-def pivot(walk):
-    """Attempt to perform a single random pivot of a self-avoiding walk
+            rot = randRot2()
+            pivStep = randint(0, self.steps - 1)
+            self.pivotOnce(pivStep, rot)
 
-    Args:
-        walk (list): the walk to pivot
+    def dist(self, start=0, end=-1):
+        """Return the end-to-end distance of the walk"""
 
-    Returns:
-        list: the pivotted walk
-    """
+        return np.linalg.norm(self.w[end] - self.w[start])
 
-    steps = len(walk)
-    pivStep = randint(0, steps - 1)
-    pivPoint = walk[pivStep]
+    def maxDist(self):
+        """Return the max distance between any two points of the walk"""
 
-    rot = randRot2()
-
-    # Copy walk into pivWalk and attempt to pivot steps past pivStep
-    pivWalk = walk[:]
-    for i in range(pivStep + 1, steps):
-        pivWalk[i] = (pivPoint +
-                      np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
-        # Check for intersection resulting from pivot. Intersections can
-        # only occur between steps before and after pivStep.
-        for j in range(pivStep):
-            if (pivWalk[i] == pivWalk[j]).all():
-                return walk
-
-    return pivWalk
+        m = 0
+        for i in range(self.steps):
+            for j in range(i + 1, self.steps):
+                m = max(self.dist(i, j), m)
+        return m
 
 
 def randRot2():
@@ -92,3 +89,28 @@ def randRot2():
     rot[1, 1] = rot[0, 0]
 
     return rot
+
+
+def plotwalk(walk, style='-o'):
+    """Plot a walk"""
+
+    x = [item[0] for item in walk]
+    y = [item[1] for item in walk]
+    plt.clf()
+    plt.plot(x, y, style)
+    plt.axes().set_aspect('equal', 'datalim')
+    plt.pause(0.2)
+
+
+def demo(steps, iterations):
+    """Run a demo of the pivot algorithm"""
+
+    plt.ion()
+
+    walk = saw(steps)
+
+    for n in range(iterations):
+        print('Iteration ', n)
+        walk.pivot(1)
+        plotwalk(walk)
+    return None
