@@ -2,20 +2,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections.abc import Sequence
 # from timeit import default_timer
-from random import randint
+from random import randint, random
 from copy import deepcopy
 
 
 class saw(Sequence):
     """Self-avoiding walk class"""
 
-    def __init__(self, init):
+    def __init__(self, init, strength=np.inf):
+        self.strength = strength
+
         if type(init) == int:
             self.steps = init
             self.w = np.array([[i, 0] for i in range(self.steps)])
         elif type(init) == list:
             self.steps = len(init)
             self.w = init
+
         super().__init__()
 
     def __getitem__(self, i):
@@ -28,7 +31,7 @@ class saw(Sequence):
         for point in self.w:
             print(point)
 
-    def pivot(self, pivStep, rot):
+    def pivotStrong(self, pivStep, rot):
         """Attempt to pivot the walk in a self-avoiding manner
 
         Args:
@@ -56,6 +59,48 @@ class saw(Sequence):
 
         self.w = pivWalk
         return True
+
+    def pivotWeak(self, pivStep, rot):
+        # First count intersections
+        intersections = 0
+        for i in range(self.steps):
+            for j in range(i + 1, self.steps):
+                if (self.w[i] == self.w[j]).all():
+                    intersections += 1
+
+        # Copy, pivot, and count new intersections
+        pivIntersections = 0
+        pivWalk = deepcopy(self.w)
+        pivPoint = pivWalk[pivStep]
+        for i in range(pivStep + 1, self.steps):
+            pivWalk[i] = (pivPoint +
+                          np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
+            # Checking for intersections can be optimized using hash tables
+            for j in range(pivStep):
+                # Might be a bit faster (especially if d is large) to check one
+                # component at a time.
+                # See also the speedup for nearest-neighbour walks in Stellman,
+                # Froimowitz, and Gans (71)
+                if (pivWalk[i] == pivWalk[j]).all():
+                    pivIntersections += 1
+
+        if pivIntersections <= intersections:
+            self.w = pivWalk
+            return True
+
+        ratio = np.exp(-self.strength * (pivIntersections - intersections))
+        r = random()
+        if r < ratio:
+            self.w = pivWalk
+            return True
+
+        return False
+
+    def pivot(self, pivStep, rot):
+        if self.strength == np.inf:
+            return self.pivotStrong(pivStep, rot)
+        else:
+            return self.pivotWeak(pivStep, rot)
 
     def mix(self, iterations):
         for n in range(0, iterations):
@@ -106,18 +151,17 @@ def plotwalk(walk, style='-o'):
     size = walk.maxDist(np.inf)
     plt.axis([-size, size, -size, size])
     plt.pause(0.2)
-    input('')
 
 
-def demo(steps, iterations):
+def demo(steps, iterations, strength=np.inf, style='-o'):
     """Run a demo of the pivot algorithm"""
 
     plt.ion()
 
-    walk = saw(steps)
+    walk = saw(steps, strength)
 
     for n in range(iterations):
         print('Iteration ', n)
         walk.mix(1)
-        plotwalk(walk)
+        plotwalk(walk, style)
     return None
