@@ -179,12 +179,12 @@ def plotwalk(walk, style='-o'):
     plt.pause(0.2)
 
 
-def demo(steps, iterations, strength=np.inf, style='-o'):
+def demo(steps, iterations, style='-o'):
     """Run a demo of the pivot algorithm"""
 
     plt.ion()
 
-    walk = saw(steps, strength)
+    walk = saw(steps)
 
     for n in range(iterations):
         print('Iteration ', n)
