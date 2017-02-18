@@ -70,30 +70,18 @@ class saw(Sequence):
     def pivotEnergy(self, pivStep, rot):
         """Pivot according to an energy function"""
 
-        # First count intersections
-        E = self.energy(self, *self.params)
-        # for i in range(self.steps):
-        #     for j in range(i + 1, self.steps):
-        #         if (self.w[i] == self.w[j]).all():
-        #             intersections += 1
-
-        # Copy, pivot, and count new intersections
-        # pivIntersections = 0
         pivWalk = deepcopy(self.w)
         pivPoint = pivWalk[pivStep]
         for i in range(pivStep + 1, self.steps):
             pivWalk[i] = (pivPoint +
                           np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
-            # for j in range(pivStep):
-            #     if (pivWalk[i] == pivWalk[j]).all():
-            #         pivIntersections += 1
-        pivE = self.energy(self, *self.params)
+        E = self.energy(self, *self.params)
+        pivE = self.energy(pivWalk, *self.params)
 
         if pivE <= E:
             self.w = pivWalk
             return True
 
-        # ratio = np.exp(-self.strength * (pivE - E))
         ratio = np.exp(-(pivE - E))
         r = random()
         if r < ratio:
@@ -141,14 +129,15 @@ def wsaw_sa(walk, repulsion, attraction):
     intersections = 0
     contacts = 0
 
-    for i in range(walk.steps):
-        for j in range(i + 1, walk.steps):
+    for i in range(len(walk)):
+        for j in range(i + 1, len(walk)):
             dist = np.linalg.norm(walk[i] - walk[j], ord=1)
             if dist == 0:
                 intersections += 1
             if attraction != 0 and dist == 1:
                 contacts += 1
 
+    # The following is missing some kind of normalization
     return repulsion * intersections - attraction * contacts
 
 
@@ -172,19 +161,17 @@ def plotwalk(walk, style='-o'):
     y = [item[1] for item in walk]
     plt.clf()
     plt.plot(x, y, style)
-    # plt.axes().set_aspect('equal', 'datalim')
-    # size = max(max(plt.axis()), walk.maxDist())
-    size = walk.maxDist(np.inf) + 10
+    size = int(1.1 * walk.maxDist(np.inf))
     plt.axis([-size, size, -size, size])
     plt.pause(0.2)
 
 
-def demo(steps, iterations, style='-o'):
+def demo(steps, iterations, energy='strict', params=None, style='-o'):
     """Run a demo of the pivot algorithm"""
 
     plt.ion()
 
-    walk = saw(steps)
+    walk = saw(steps, energy, params)
 
     for n in range(iterations):
         print('Iteration ', n)
