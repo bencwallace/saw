@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from collections.abc import Sequence
-# from timeit import default_timer
+from functools import partial
 from random import randint, random
 from copy import deepcopy
 
@@ -9,13 +9,20 @@ from copy import deepcopy
 class saw(Sequence):
     """Self-avoiding walk class"""
 
-    def __init__(self, init, strength=np.inf):
-        self.strength = strength
+    def __init__(self, init, energy='strict', params=None):
+        if energy == 'strict':
+            self.energy = 'strict'
+        elif energy == 'weak':
+            self.energy = partial(wsaw_sa, attraction=0)
+        else:
+            self.energy = energy
 
-        if type(init) == int:
+        self.params = params
+
+        if type(init) is int:
             self.steps = init
             self.w = np.array([[i, 0] for i in range(self.steps)])
-        elif type(init) == list:
+        elif type(init) is list:
             self.steps = len(init)
             self.w = init
 
@@ -31,7 +38,7 @@ class saw(Sequence):
         for point in self.w:
             print(point)
 
-    def pivotStrong(self, pivStep, rot):
+    def pivotStrict(self, pivStep, rot):
         """Attempt to pivot the walk in a self-avoiding manner
 
         Args:
@@ -60,35 +67,34 @@ class saw(Sequence):
         self.w = pivWalk
         return True
 
-    def pivotWeak(self, pivStep, rot):
+    def pivotEnergy(self, pivStep, rot):
+        """Pivot according to an energy function"""
+
         # First count intersections
-        intersections = 0
-        for i in range(self.steps):
-            for j in range(i + 1, self.steps):
-                if (self.w[i] == self.w[j]).all():
-                    intersections += 1
+        E = self.energy(self, *self.params)
+        # for i in range(self.steps):
+        #     for j in range(i + 1, self.steps):
+        #         if (self.w[i] == self.w[j]).all():
+        #             intersections += 1
 
         # Copy, pivot, and count new intersections
-        pivIntersections = 0
+        # pivIntersections = 0
         pivWalk = deepcopy(self.w)
         pivPoint = pivWalk[pivStep]
         for i in range(pivStep + 1, self.steps):
             pivWalk[i] = (pivPoint +
                           np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
-            # Checking for intersections can be optimized using hash tables
-            for j in range(pivStep):
-                # Might be a bit faster (especially if d is large) to check one
-                # component at a time.
-                # See also the speedup for nearest-neighbour walks in Stellman,
-                # Froimowitz, and Gans (71)
-                if (pivWalk[i] == pivWalk[j]).all():
-                    pivIntersections += 1
+            # for j in range(pivStep):
+            #     if (pivWalk[i] == pivWalk[j]).all():
+            #         pivIntersections += 1
+        pivE = self.energy(self, *self.params)
 
-        if pivIntersections <= intersections:
+        if pivE <= E:
             self.w = pivWalk
             return True
 
-        ratio = np.exp(-self.strength * (pivIntersections - intersections))
+        # ratio = np.exp(-self.strength * (pivE - E))
+        ratio = np.exp(-(pivE - E))
         r = random()
         if r < ratio:
             self.w = pivWalk
@@ -97,10 +103,10 @@ class saw(Sequence):
         return False
 
     def pivot(self, pivStep, rot):
-        if self.strength == np.inf:
-            return self.pivotStrong(pivStep, rot)
+        if self.energy == 'strict':
+            return self.pivotStrict(pivStep, rot)
         else:
-            return self.pivotWeak(pivStep, rot)
+            return self.pivotEnergy(pivStep, rot)
 
     def mix(self, iterations):
         for n in range(0, iterations):
@@ -126,6 +132,26 @@ class saw(Sequence):
         return m
 
 
+def wsaw_sa(walk, repulsion, attraction):
+    """
+    The energy function for a weakly self-avoiding walk with
+    nearest-neighbour self-attraction
+    """
+
+    intersections = 0
+    contacts = 0
+
+    for i in range(walk.steps):
+        for j in range(i + 1, walk.steps):
+            dist = np.linalg.norm(walk[i] - walk[j], ord=1)
+            if dist == 0:
+                intersections += 1
+            if attraction != 0 and dist == 1:
+                contacts += 1
+
+    return repulsion * intersections - attraction * contacts
+
+
 def randRot2():
     """Return a random 2 by 2 rotation matrix that is not the identity"""
 
@@ -148,7 +174,7 @@ def plotwalk(walk, style='-o'):
     plt.plot(x, y, style)
     # plt.axes().set_aspect('equal', 'datalim')
     # size = max(max(plt.axis()), walk.maxDist())
-    size = walk.maxDist(np.inf)
+    size = walk.maxDist(np.inf) + 10
     plt.axis([-size, size, -size, size])
     plt.pause(0.2)
 
