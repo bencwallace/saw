@@ -9,15 +9,17 @@ from copy import deepcopy
 class saw(Sequence):
     """Self-avoiding walk class"""
 
-    def __init__(self, init, energy='strict', params=None):
+    def __init__(self, init, energy='strict', **kwargs):
         if energy == 'strict':
             self.energy = 'strict'
         elif energy == 'weak':
-            self.energy = partial(wsaw_sa, attraction=0)
+            self.repulsion = kwargs.get('repulsion')
+            self.attraction = kwargs.get('attraction')
+            self.energy = partial(wsaw_sa, self.repulsion, self.attraction)
+        elif energy == 'srw':
+            self.energy = partial(wsaw_sa, repulsion=0, attraction=0)
         else:
             self.energy = energy
-
-        self.params = params
 
         if type(init) is int:
             self.steps = init
@@ -67,6 +69,7 @@ class saw(Sequence):
         self.w = pivWalk
         return True
 
+    # Broken
     def pivotEnergy(self, pivStep, rot):
         """Pivot according to an energy function"""
 
@@ -75,8 +78,8 @@ class saw(Sequence):
         for i in range(pivStep + 1, self.steps):
             pivWalk[i] = (pivPoint +
                           np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
-        E = self.energy(self, *self.params)
-        pivE = self.energy(pivWalk, *self.params)
+        E = self.energy(self)
+        pivE = self.energy(pivWalk)
 
         if pivE <= E:
             self.w = pivWalk
@@ -154,27 +157,60 @@ def randRot2():
     return rot
 
 
-def plotwalk(walk, style='-o'):
+def plotwalk(walk, style='-o', vertex=None):
     """Plot a walk"""
 
     x = [item[0] for item in walk]
     y = [item[1] for item in walk]
+    # colours = ['blue'] * len(x)
+    default_size = plt.rcParams['lines.markersize'] ** 2
+    sizes = [default_size] * len(x)
+    if vertex is not None:
+        # colours[vertex] = 'red'
+        sizes[vertex] = default_size * np.log10(len(x)) * 2
+
     plt.clf()
-    plt.plot(x, y, style)
+    # if style != 'o':
+    #     plt.plot(x, y, style)
+    plt.scatter(x, y, s=sizes)
     size = int(1.1 * walk.maxDist(np.inf))
     plt.axis([-size, size, -size, size])
-    plt.pause(0.2)
+    plt.show()
 
 
-def demo(steps, iterations, energy='strict', params=None, style='-o'):
+def demo(steps, iterations, energy='strict', style='-o', **kwargs):
     """Run a demo of the pivot algorithm"""
 
     plt.ion()
 
-    walk = saw(steps, energy, params)
+    walk = saw(steps, energy, **kwargs)
 
     for n in range(iterations):
         print('Iteration ', n)
-        walk.mix(1)
+
+        pivStep = randint(0, walk.steps - 1)
+        plotwalk(walk, style, vertex=pivStep)
+
+        plt.pause(0.5)
+
+        r = randRot2()
+        walk.pivot(pivStep, r)
         plotwalk(walk, style)
+
+        plt.pause(0.2)
     return None
+
+
+# def demo(steps, iterations, energy='srw', style='-o', **kwargs):
+#     """Run a demo of the pivot algorithm"""
+
+#     plt.ion()
+
+#     walk = saw(steps, energy, **kwargs)
+
+#     for n in range(iterations):
+#         print('Iteration ', n)
+#         walk.mix(1)
+#         plotwalk(walk, style)
+#         plt.pause(0.2)
+#     return None
