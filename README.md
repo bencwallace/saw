@@ -14,6 +14,6 @@ Jupyter notebook `saw-simulation.ipynb`.
 
 To generate an animation of 100 iterations of the pivot algorithm for a 50-step SAW, run the following:
 ```python
-import saw
-saw.demo(50, 100)
+from demo import demo
+demo(50, 100)
 ```
