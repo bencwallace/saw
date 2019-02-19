@@ -1,132 +1,17 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from collections.abc import Sequence
-from functools import partial
-from random import randint, random
-from copy import deepcopy
 
 
-class saw(Sequence):
-    """Self-avoiding walk class"""
-
-    def __init__(self, init, energy='strict', **kwargs):
-        if energy == 'strict':
-            self.energy = 'strict'
-        elif energy == 'weak':
-            self.repulsion = kwargs.get('repulsion')
-            self.attraction = kwargs.get('attraction')
-            self.energy = partial(wsaw_sa, self.repulsion, self.attraction)
-        elif energy == 'srw':
-            self.energy = partial(wsaw_sa, repulsion=0, attraction=0)
-        else:
-            self.energy = energy
-
-        if type(init) is int:
-            self.steps = init
-            self.w = np.array([[i, 0] for i in range(self.steps)])
-        elif type(init) is list:
-            self.steps = len(init)
-            self.w = init
-
-        super().__init__()
-
-    def __getitem__(self, i):
-        return self.w[i]
-
-    def __len__(self):
-        return self.steps
-
-    def display(self):
-        for point in self.w:
-            print(point)
-
-    def pivotStrict(self, pivStep, rot):
-        """Attempt to pivot the walk in a self-avoiding manner
-
-        Args:
-            pivStep (int): the step about which to pivot
-            rot (numpy.array): a rotation matrix
-
-        Returns:
-            bool: True if pivot succeeds, False otherwise
-        """
-
-        # Copy walk into pivWalk and attempt to pivot steps past pivStep
-        pivWalk = deepcopy(self.w)
-        pivPoint = pivWalk[pivStep]
-        for i in range(pivStep + 1, self.steps):
-            pivWalk[i] = (pivPoint +
-                          np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
-            # Checking for intersections can be optimized using hash tables
-            for j in range(pivStep):
-                # Might be a bit faster (especially if d is large) to check one
-                # component at a time.
-                # See also the speedup for nearest-neighbour walks in Stellman,
-                # Froimowitz, and Gans (71)
-                if (pivWalk[i] == pivWalk[j]).all():
-                    return False
-
-        self.w = pivWalk
-        return True
-
-    # Broken
-    def pivotEnergy(self, pivStep, rot):
-        """Pivot according to an energy function"""
-
-        pivWalk = deepcopy(self.w)
-        pivPoint = pivWalk[pivStep]
-        for i in range(pivStep + 1, self.steps):
-            pivWalk[i] = (pivPoint +
-                          np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
-        E = self.energy(self)
-        pivE = self.energy(pivWalk)
-
-        if pivE <= E:
-            self.w = pivWalk
-            return True
-
-        ratio = np.exp(-(pivE - E))
-        r = random()
-        if r < ratio:
-            self.w = pivWalk
-            return True
-
-        return False
-
-    def pivot(self, pivStep, rot):
-        if self.energy == 'strict':
-            return self.pivotStrict(pivStep, rot)
-        else:
-            return self.pivotEnergy(pivStep, rot)
-
-    def mix(self, iterations):
-        for n in range(0, iterations):
-            if n > 0 and n % 100 == 0:
-                print("Iteration %d\n" % n)
-
-            rot = randRot2()
-            pivStep = randint(0, self.steps - 1)
-            self.pivot(pivStep, rot)
-
-    def dist(self, start=0, end=-1, ord=2):
-        """Return the end-to-end distance of the walk"""
-
-        return np.linalg.norm(self.w[end] - self.w[start], ord)
-
-    def maxDist(self, ord=2):
-        """Return the max distance between any two points of the walk"""
-
-        m = 0
-        for i in range(self.steps):
-            for j in range(i + 1, self.steps):
-                m = max(self.dist(i, j, ord), m)
-        return m
+def energy_strict():
+    pass
 
 
-def wsaw_sa(walk, repulsion, attraction):
+def energy_mixed(walk, repulsion, attraction):
     """
     The energy function for a weakly self-avoiding walk with
-    nearest-neighbour self-attraction
+    nearest-neighbour self-attraction. A combined implementation is more
+    efficient.
     """
 
     intersections = 0
@@ -144,73 +29,77 @@ def wsaw_sa(walk, repulsion, attraction):
     return repulsion * intersections - attraction * contacts
 
 
-def randRot2():
-    """Return a random 2 by 2 rotation matrix that is not the identity"""
-
-    rot = np.empty([2, 2])
-
-    rot[0, 1] = randint(-1, 1)
-    rot[0, 0] = abs(rot[0, 1]) - 1
-    rot[1, 0] = -rot[0, 1]
-    rot[1, 1] = rot[0, 0]
-
-    return rot
+def energy_weak(walk, repulsion):
+    return energy_mixed(walk, repulsion, 0)
 
 
-def plotwalk(walk, style='-o', vertex=None):
-    """Plot a walk"""
-
-    x = [item[0] for item in walk]
-    y = [item[1] for item in walk]
-    # colours = ['blue'] * len(x)
-    default_size = plt.rcParams['lines.markersize'] ** 2
-    sizes = [default_size] * len(x)
-    if vertex is not None:
-        # colours[vertex] = 'red'
-        sizes[vertex] = default_size * np.log10(len(x)) * 2
-
-    plt.clf()
-    # if style != 'o':
-    #     plt.plot(x, y, style)
-    plt.scatter(x, y, s=sizes)
-    size = int(1.1 * walk.maxDist(np.inf))
-    plt.axis([-size, size, -size, size])
-    plt.show()
+def energy_attract(walk, attraction):
+    return energy_mixed(walk, 0, attraction)
 
 
-def demo(steps, iterations, energy='strict', style='-o', **kwargs):
-    """Run a demo of the pivot algorithm"""
+class polymer(Sequence):
+    """A linear polymer"""
 
-    plt.ion()
+    known_species = ['simple', 'strict', 'weak', 'attract', 'mixed']
 
-    walk = saw(steps, energy, **kwargs)
+    def __init__(self, steps, species='strict', **kwargs):
+        if species not in polymer.known_species:
+            self.species = 'custom'
+            self.energy_fcn = kwargs.get('energy')
+        else:
+            self.species = species
 
-    for n in range(iterations):
-        print('Iteration ', n)
+        # Get repulsion and attraction
+        if self.species == 'weak' or self.species == 'mixed':
+            self.repulsion = kwargs.get('repulsion')
+        if self.species == 'attract' or self.species == 'mixed':
+            self.attraction = kwargs.get('attraction')
 
-        pivStep = randint(0, walk.steps - 1)
-        plotwalk(walk, style, vertex=pivStep)
+        # Initialize walk
+        if type(steps) is int:
+            self.steps = steps
+            self.path = np.array([[i, 0] for i in range(self.steps)])
+        elif type(steps) is list:
+            self.steps = len(steps)
+            self.path = steps
 
-        plt.pause(0.5)
+        super().__init__()
 
-        r = randRot2()
-        walk.pivot(pivStep, r)
-        plotwalk(walk, style)
+    def __getitem__(self, i):
+        return self.path[i]
 
-        plt.pause(0.2)
-    return None
+    def __len__(self):
+        return self.steps
 
+    def energy(self):
+        if self.species == 'simple':
+            return 0
+        elif self.species == 'strict':
+            return energy_strict(self)
+        elif self.species == 'weak':
+            return energy_weak(self)
+        elif self.species == 'attract':
+            return energy_attract(self)
+        elif self.species == 'mixed':
+            return self.repulsion * energy_weak(self) -\
+                self.attraction * energy_attract(self)
+        else:
+            return self.energy_fcn(self)
 
-# def demo(steps, iterations, energy='srw', style='-o', **kwargs):
-#     """Run a demo of the pivot algorithm"""
+    def display(self):
+        for point in self.path:
+            print(point)
 
-#     plt.ion()
+    def dist(self, start=0, end=-1, ord=2):
+        """Return the end-to-end distance of the walk"""
 
-#     walk = saw(steps, energy, **kwargs)
+        return np.linalg.norm(self.path[end] - self.path[start], ord)
 
-#     for n in range(iterations):
-#         print('Iteration ', n)
-#         walk.mix(1)
-#         plotwalk(walk, style)
-#         plt.pause(0.2)
-#     return None
+    def maxDist(self, ord=2):
+        """Return the max distance between any two points of the walk"""
+
+        m = 0
+        for i in range(self.steps):
+            for j in range(i + 1, self.steps):
+                m = max(self.dist(i, j, ord), m)
+        return m
