@@ -60,14 +60,15 @@ class polymer(Sequence):
 
     def __init__(self, steps, dimension=2, species='strict', **kwargs):
         self.dimension = dimension
+        self.kwargs = kwargs
 
         if type(steps) is int:
             self.steps = steps
 
             e1 = np.zeros(dimension)
             e1[0] = 1
-            self.path = np.array([i * e1 for i in range(self.steps)])
-        elif type(steps) is list:
+            self.path = [i * e1 for i in range(self.steps)]
+        else:
             self.steps = len(steps)
             self.path = steps
 
@@ -85,11 +86,23 @@ class polymer(Sequence):
 
         super().__init__()
 
-    def __getitem__(self, i):
-        return self.path[i]
-
     def __len__(self):
         return self.steps
+
+    def __getitem__(self, i):
+        return polymer(self.path[i], self.dimension, self.species,
+                       **self.kwargs)
+
+    def __contains__(self, x):
+        for item in self.path:
+            if (item == x).all():
+                return True
+        return False
+
+    def __neg__(self):
+        neg_path = [-item for item in self.path]
+        return polymer(neg_path, self.dimension, self.species,
+                       **self.kwargs)
 
     def energy(self):
         if self.species == 'simple':
