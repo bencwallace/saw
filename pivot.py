@@ -5,7 +5,7 @@ from saw import polymer
 
 
 def randRot2():
-    """Return a random 2 by 2 rotation matrix that is not the identity"""
+    """Return a random 2 by 2 lattice rotation besides the identity"""
 
     rot = np.empty([2, 2])
 
@@ -20,51 +20,48 @@ def randRot2():
 def pivot_strict(walk, step, rotation):
     """Attempt to pivot the walk in a self-avoiding manner"""
 
-    # Copy walk into pivWalk and attempt to pivot steps past step
     newpath = deepcopy(walk.path)
     pivPoint = newpath[step]
+
     for i in range(step + 1, len(newpath)):
         diff = newpath[i] - pivPoint
         newpath[i] = (pivPoint + np.dot(rotation, np.transpose(diff)))
-
-        # Possible ways to optimize: better search/hash tables, check one
-        # component  at a time (large d), Stellman, Froimowitz, and Gans (71)
         if newpath[i] in walk:
             return walk
+    new_walk = polymer(newpath, walk.dimension, walk.species, **walk.kwargs)
 
-    return polymer(newpath, walk.dimension, walk.species, **walk.kwargs)
+    return new_walk
 
 
-# Broken
-def pivot_energy(walk, pivStep, rot):
+def pivot_energy(walk, step, rotation):
     """Pivot according to an energy function"""
 
-    pivWalk = deepcopy(walk.w)
-    pivPoint = pivWalk[pivStep]
-    for i in range(pivStep + 1, walk.steps):
-        pivWalk[i] = (pivPoint +
-                      np.dot(rot, np.transpose(pivWalk[i] - pivPoint)))
-    E = walk.species(walk)
-    pivE = walk.species(pivWalk)
+    newpath = deepcopy(walk.path)
+    pivPoint = newpath[step]
 
-    if pivE <= E:
-        walk.w = pivWalk
-        return True
+    for i in range(step + 1, len(newpath)):
+        diff = newpath[i] - pivPoint
+        newpath[i] = pivPoint + np.dot(rotation, np.transpose(diff))
+    new_walk = polymer(newpath, walk.dimension, walk.species, **walk.kwargs)
 
+    E = walk.energy()
+    pivE = new_walk.energy()
     ratio = np.exp(-(pivE - E))
+
     r = random()
-    if r < ratio:
-        walk.w = pivWalk
-        return True
-
-    return False
-
-
-def pivot(walk, pivStep, rot):
-    if walk.species == 'strict':
-        return pivot_strict(walk, pivStep, rot)
+    if ratio >= r:
+        return new_walk
     else:
-        return pivot_energy(walk, pivStep, rot)
+        return walk
+
+
+def pivot(walk, step, rot):
+    """Pivot a walk"""
+
+    if walk.species == 'strict':
+        return pivot_strict(walk, step, rot)
+    else:
+        return pivot_energy(walk, step, rot)
 
 # def mix(walk, iterations):
 #     for n in range(0, iterations):
@@ -72,5 +69,5 @@ def pivot(walk, pivStep, rot):
 #             print("Iteration %d\n" % n)
 
 #         rot = randRot2()
-#         pivStep = randint(0, walk.steps - 1)
-#         walk.pivot(pivStep, rot)
+#         step = randint(0, walk.steps - 1)
+#         walk.pivot(step, rot)

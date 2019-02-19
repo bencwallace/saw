@@ -2,38 +2,45 @@ import numpy as np
 from collections.abc import Sequence
 
 
-def energy_mixed(walk, repulsion, attraction):
+def energy_mixed(path, repulsion, attraction):
     """
     The energy function for a weakly self-avoiding walk with
-    nearest-neighbour self-attraction. A combined implementation is more
-    efficient.
+    nearest-neighbour self-attraction.
     """
 
     intersections = 0
     contacts = 0
 
-    for i in range(len(walk)):
-        for j in range(i + 1, len(walk)):
-            dist = np.linalg.norm(walk[i] - walk[j], ord=1)
+    for i in range(len(path)):
+        for j in range(i + 1, len(path)):
+            dist = np.linalg.norm(path[i] - path[j], ord=1)
             if dist == 0:
                 intersections += 1
-            if attraction != 0 and dist == 1:
+            elif dist == 1:
                 contacts += 1
 
     # The following is missing some kind of normalization
     return repulsion * intersections - attraction * contacts
 
 
-def energy_weak(walk, repulsion):
-    return energy_mixed(walk, repulsion, 0)
+def energy_weak(path, repulsion):
+    """Energy for a weakly self-avoiding walk"""
+
+    return energy_mixed(path, repulsion, 0)
 
 
-def energy_strict(walk):
-    return int(energy_weak(walk, 1) > 0)
+def energy_strict(path):
+    """Energy for a strictly self-avoiding walk."""
+
+    # The number 1000 is chosen for use with Metropolis-Hastings,
+    # where np.exp(-1000) == 0
+    return 1000 * int(energy_weak(path, 1) > 0)
 
 
-def energy_attract(walk, attraction):
-    return energy_mixed(walk, 0, attraction)
+def energy_attract(path, attraction):
+    """Energy for a walk with self-attraction."""
+
+    return energy_mixed(path, 0, attraction)
 
 
 class polymer(Sequence):
@@ -108,16 +115,15 @@ class polymer(Sequence):
         if self.species == 'simple':
             return 0
         elif self.species == 'strict':
-            return energy_strict(self)
+            return energy_strict(self.path)
         elif self.species == 'weak':
-            return energy_weak(self)
+            return energy_weak(self.path)
         elif self.species == 'attract':
-            return energy_attract(self)
+            return energy_attract(self.path)
         elif self.species == 'mixed':
-            return self.repulsion * energy_weak(self) -\
-                self.attraction * energy_attract(self)
+            return energy_mixed(self.path)
         else:
-            return self.energy_fcn(self)
+            return self.energy_fcn(self.path)
 
     def dist(self, start=0, end=-1, ord=2):
         """Return the end-to-end distance of the walk"""
