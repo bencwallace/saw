@@ -1,10 +1,5 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from collections.abc import Sequence
-
-
-def energy_strict():
-    pass
 
 
 def energy_mixed(walk, repulsion, attraction):
@@ -33,6 +28,10 @@ def energy_weak(walk, repulsion):
     return energy_mixed(walk, repulsion, 0)
 
 
+def energy_strict(walk):
+    return int(energy_weak(walk, 1) > 0)
+
+
 def energy_attract(walk, attraction):
     return energy_mixed(walk, 0, attraction)
 
@@ -42,7 +41,20 @@ class polymer(Sequence):
 
     known_species = ['simple', 'strict', 'weak', 'attract', 'mixed']
 
-    def __init__(self, steps, species='strict', **kwargs):
+    # To do: add dimensions
+    def __init__(self, steps, dimensions=2, species='strict', **kwargs):
+        self.dimensions = dimensions
+
+        if type(steps) is int:
+            self.steps = steps
+
+            e1 = np.zeros(dimensions)
+            e1[0] = 1
+            self.path = np.array([i * e1 for i in range(self.steps)])
+        elif type(steps) is list:
+            self.steps = len(steps)
+            self.path = steps
+
         if species not in polymer.known_species:
             self.species = 'custom'
             self.energy_fcn = kwargs.get('energy')
@@ -54,14 +66,6 @@ class polymer(Sequence):
             self.repulsion = kwargs.get('repulsion')
         if self.species == 'attract' or self.species == 'mixed':
             self.attraction = kwargs.get('attraction')
-
-        # Initialize walk
-        if type(steps) is int:
-            self.steps = steps
-            self.path = np.array([[i, 0] for i in range(self.steps)])
-        elif type(steps) is list:
-            self.steps = len(steps)
-            self.path = steps
 
         super().__init__()
 
