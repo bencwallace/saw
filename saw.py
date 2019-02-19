@@ -37,18 +37,34 @@ def energy_attract(walk, attraction):
 
 
 class polymer(Sequence):
-    """A linear polymer"""
+    """
+    A linear polymer model.
+
+    Attributes:
+        known_species (list): "Known" polymer series.
+        dimension (int): Dimension of ambient space.
+        steps (int): Number of steps in walk.
+        species (str): Species of walk.
+        path (list): Polymer coordinates.
+        energy_fcn (function): Custom energy function.
+        repulsion (float): Repulsion parameter.
+        attraction (float): Attraction parameter.
+
+    Methods:
+        energy: Return total energy of polymer.
+        dist: Return end-to-end distance between parts of the polymer.
+        maxDist: Returns the maximal end-to-end distance of the polymer.
+    """
 
     known_species = ['simple', 'strict', 'weak', 'attract', 'mixed']
 
-    # To do: add dimensions
-    def __init__(self, steps, dimensions=2, species='strict', **kwargs):
-        self.dimensions = dimensions
+    def __init__(self, steps, dimension=2, species='strict', **kwargs):
+        self.dimension = dimension
 
         if type(steps) is int:
             self.steps = steps
 
-            e1 = np.zeros(dimensions)
+            e1 = np.zeros(dimension)
             e1[0] = 1
             self.path = np.array([i * e1 for i in range(self.steps)])
         elif type(steps) is list:
@@ -89,10 +105,6 @@ class polymer(Sequence):
                 self.attraction * energy_attract(self)
         else:
             return self.energy_fcn(self)
-
-    def display(self):
-        for point in self.path:
-            print(point)
 
     def dist(self, start=0, end=-1, ord=2):
         """Return the end-to-end distance of the walk"""
