@@ -63,11 +63,16 @@ def pivot(walk, step, rot):
     else:
         return pivot_energy(walk, step, rot)
 
-# def mix(walk, iterations):
-#     for n in range(0, iterations):
-#         if n > 0 and n % 100 == 0:
-#             print("Iteration %d\n" % n)
 
-#         rot = randRot2()
-#         step = randint(0, walk.steps - 1)
-#         walk.pivot(step, rot)
+def mix(walk, iterations):
+    new_walk = deepcopy(walk)
+
+    for n in range(0, iterations):
+        if n > 0 and n % 100 == 0:
+            print("Iteration %d\n" % n)
+
+        rot = randRot2()
+        step = randint(0, walk.steps - 1)
+        new_walk = pivot(new_walk, step, rot)
+
+    return new_walk

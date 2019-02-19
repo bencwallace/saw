@@ -1,63 +1,55 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from pivot import pivot_energy, pivot_strict
+from random import randint
+from pivot import pivot, randRot2
 from saw import polymer
 
 
-def plotwalk(walk, style='-o', vertex=None):
+def plotwalk(walk, style='-o', vertex=None, adjust=False):
     """Plot a walk and designated vertex"""
 
     x = [item[0] for item in walk]
     y = [item[1] for item in walk]
-    # colours = ['blue'] * len(x)
+
+    colours = ['blue'] * len(x)
     default_size = plt.rcParams['lines.markersize'] ** 2
     sizes = [default_size] * len(x)
+
     if vertex is not None:
-        # colours[vertex] = 'red'
+        colours[vertex] = 'red'
         sizes[vertex] = default_size * np.log10(len(x)) * 2
 
+    if adjust:
+        size = int(1.1 * walk.maxDist(np.inf))
+    else:
+        size = len(x)
+
     plt.clf()
-    # if style != 'o':
-    #     plt.plot(x, y, style)
-    plt.scatter(x, y, s=sizes)
-    size = int(1.1 * walk.maxDist(np.inf))
+    if '-' in style:
+        plt.plot(x, y, zorder=0)
+    if 'o' in style:
+        plt.scatter(x, y, s=sizes, c=colours, zorder=1)
     plt.axis([-size, size, -size, size])
     plt.show()
 
 
-def demo(steps, iterations, energy='strict', style='-o', **kwargs):
+def demo(steps, iterations, species='strict',
+         wait=0.01, style='-o', **kwargs):
     """Run a demo of the pivot algorithm"""
 
+    walk = polymer(steps, 2, species, **kwargs)
+
     plt.ion()
-
-    walk = polymer(steps, energy, **kwargs)
-
     for n in range(iterations):
         print('Iteration ', n)
 
         pivStep = randint(0, walk.steps - 1)
         plotwalk(walk, style, vertex=pivStep)
-
-        plt.pause(0.5)
+        plt.pause(wait)
 
         r = randRot2()
-        walk.pivot(pivStep, r)
-        plotwalk(walk, style)
-
-        plt.pause(0.2)
-    return None
-
-
-# def demo(steps, iterations, energy='srw', style='-o', **kwargs):
-#     """Run a demo of the pivot algorithm"""
-
-#     plt.ion()
-
-#     walk = saw(steps, energy, **kwargs)
-
-#     for n in range(iterations):
-#         print('Iteration ', n)
-#         walk.mix(1)
-#         plotwalk(walk, style)
-#         plt.pause(0.2)
-#     return None
+        new_walk = pivot(walk, pivStep, r)
+        if new_walk != walk:
+            walk = new_walk
+            plotwalk(walk, style, vertex=pivStep)
+            plt.pause(wait)
