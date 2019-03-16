@@ -1,5 +1,7 @@
 # Simple MCMC for Self-Avoiding Walk
 
+**Update.** For a fast [Julia](https://julialang.org) implementation of the pivot algorithm, see my new repository [*polymer*](https://github.com/bencwallace/polymer).
+
 The file `saw.py` contains methods for simulating and handling self-avoiding walks (SAWs) using Markov Chain Monte Carlo (MCMC).
 See the Jupyter Notebook (information below) for explanations of these terms.
 Written for Python 3.
